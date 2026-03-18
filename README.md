@@ -36,6 +36,7 @@ The compressor uses a progressive quality reduction strategy. If the specified q
 
 ## Browser Compatibility
 | Browser     | Support |
+|---          |---      |
 | Chrome 90+  | Full    |
 | Edge 90+    | Full    |
 | Firefox 89+ | Full    |
