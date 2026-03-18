@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SquishIt — Image Compressor</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --card: #181818;
+    --border: #2a2a2a;
+    --accent: #c8ff00;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #666;
+    --success: #4ade80;
+    --danger: #f87171;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* === HEADER === */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 32px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .logo-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 2px;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .logo-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    align-self: center;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.7; }
+  }
+
+  .logo-badge {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(200, 255, 0, 0.1);
+    border: 1px solid rgba(200, 255, 0, 0.3);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .stat-item {
+    text-align: right;
+  }
+
+  .stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* === HERO === */
+  .hero {
+    position: relative;
+    z-index: 5;
+    padding: 56px 48px 40px;
+  }
+
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(56px, 8vw, 110px);
+    line-height: 0.9;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+
+  .hero-title span {
+    color: var(--accent);
+    -webkit-text-stroke: 0px;
+  }
+
+  .hero-title .outline {
+    -webkit-text-stroke: 1px rgba(240,240,240,0.2);
+    color: transparent;
+  }
+
+  .hero-sub {
+    font-size: 15px;
+    color: var(--muted);
+    max-width: 500px;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* === CONTROLS BAR === */
+  .controls-bar {
+    position: relative;
+    z-index: 5;
+    padding: 0 48px 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .quality-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 14px 20px;
+    border-radius: 12px;
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .quality-label {
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .quality-slider {
+    -webkit-appearance: none;
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .quality-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .quality-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+  }
+
+  .quality-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    min-width: 48px;
+    text-align: right;
+  }
+
+  .format-group {
+    display: flex;
+    gap: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 8px;
+    border-radius: 12px;
+  }
+
+  .format-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .format-btn.active {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .format-btn:hover:not(.active) {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  /* === ACTIONS === */
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-left: auto;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover {
+    background: #d4ff1a;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(200, 255, 0, 0.25);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--border);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid rgba(248,113,113,0.3);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: rgba(248,113,113,0.1);
+  }
+
+  .btn-danger:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* === DROP ZONE === */
+  .drop-zone-wrapper {
+    position: relative;
+    z-index: 5;
+    padding: 0 48px;
+    margin-bottom: 40px;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 20px;
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(200,255,0,0.03) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(200, 255, 0, 0.04);
+  }
+
+  .drop-zone.dragover::before { opacity: 1; }
+
+  .drop-zone.has-files {
+    display: none;
+  }
+
+  .drop-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    transition: transform 0.3s;
+  }
+
+  .drop-zone:hover .drop-icon,
+  .drop-zone.dragover .drop-icon {
+    transform: scale(1.1) rotate(-5deg);
+  }
+
+  .drop-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .drop-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .drop-sub strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .drop-formats {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .format-tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .format-tag.webp { border-color: rgba(200,255,0,0.4); color: var(--accent); background: rgba(200,255,0,0.06); }
+  .format-tag.jpeg { border-color: rgba(255,107,53,0.4); color: var(--accent2); background: rgba(255,107,53,0.06); }
+  .format-tag.png  { border-color: rgba(99,179,237,0.4); color: #63b3ed; background: rgba(99,179,237,0.06); }
+
+  .btn-browse {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-browse:hover {
+    background: #d4ff1a;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(200,255,0,0.25);
+  }
+
+  #fileInput { display: none; }
+
+  /* === PROGRESS BAR === */
+  .progress-wrap {
+    position: relative;
+    z-index: 5;
+    padding: 0 48px;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .progress-wrap.visible { display: block; }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .progress-bar-outer {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #80ff80);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  /* === IMAGE GRID === */
+  .grid-wrapper {
+    position: relative;
+    z-index: 5;
+    padding: 0 48px 60px;
+    display: none;
+  }
+
+  .grid-wrapper.visible { display: block; }
+
+  .grid-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .grid-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .count-badge {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    background: var(--accent);
+    color: #000;
+    border-radius: 20px;
+    letter-spacing: 0px;
+  }
+
+  .summary-strip {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .summary-item {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .summary-item strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .summary-item .saved {
+    color: var(--accent);
+  }
+
+  .image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  /* === IMAGE CARD === */
+  .img-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s;
+    animation: cardIn 0.4s ease forwards;
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  @keyframes cardIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .img-card:hover {
+    border-color: rgba(200,255,0,0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  }
+
+  .img-card.processing {
+    border-color: rgba(200,255,0,0.4);
+  }
+
+  .img-card.done {
+    border-color: rgba(74,222,128,0.3);
+  }
+
+  .img-card.error {
+    border-color: rgba(248,113,113,0.3);
+  }
+
+  .img-thumb-wrap {
+    position: relative;
+    height: 160px;
+    background: #0d0d0d;
+    overflow: hidden;
+  }
+
+  .img-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.85;
+    transition: opacity 0.2s;
+  }
+
+  .img-card:hover .img-thumb { opacity: 1; }
+
+  .img-status-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.7);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .img-card.processing .img-status-overlay { opacity: 1; }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(200,255,0,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .done-badge {
+    width: 40px;
+    height: 40px;
+    background: var(--success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .img-card.done .img-status-overlay {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .compression-pill {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid rgba(200,255,0,0.4);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    display: none;
+  }
+
+  .img-card.done .compression-pill { display: block; }
+
+  .img-info {
+    padding: 12px 14px;
+  }
+
+  .img-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 8px;
+  }
+
+  .size-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .size-original {
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+
+  .size-arrow {
+    font-size: 11px;
+    color: var(--border);
+  }
+
+  .size-compressed {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--success);
+  }
+
+  .size-wait {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .img-actions {
+    display: flex;
+    gap: 6px;
+    padding: 0 14px 12px;
+  }
+
+  .btn-dl {
+    flex: 1;
+    padding: 8px;
+    background: rgba(200,255,0,0.08);
+    border: 1px solid rgba(200,255,0,0.2);
+    color: var(--accent);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: none;
+  }
+
+  .btn-dl:hover {
+    background: rgba(200,255,0,0.15);
+  }
+
+  .img-card.done .btn-dl { display: block; }
+
+  .btn-remove {
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-remove:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(248,113,113,0.05);
+  }
+
+  /* === BOTTOM DOWNLOAD BAR === */
+  .dl-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: linear-gradient(0deg, var(--bg) 0%, rgba(10,10,10,0.98) 100%);
+    border-top: 1px solid var(--border);
+    padding: 20px 48px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    backdrop-filter: blur(20px);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .dl-bar.visible {
+    display: flex;
+    transform: translateY(0);
+  }
+
+  .dl-bar-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dl-bar-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+
+  .dl-bar-sub {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .dl-bar-sub span {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .dl-bar-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* Saving indicator */
+  .saving-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  .saving-badge::before {
+    content: '▼';
+    font-size: 14px;
+    animation: bounce 1.5s ease-in-out infinite;
+  }
+
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
+  }
+
+  /* Upload more area */
+  .upload-more {
+    position: relative;
+    z-index: 5;
+    padding: 0 48px 20px;
+    display: none;
+  }
+
+  .upload-more.visible { display: block; }
+
+  .upload-more-btn {
+    width: 100%;
+    padding: 16px;
+    border: 2px dashed var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+
+  .upload-more-btn:hover {
+    border-color: rgba(200,255,0,0.4);
+    color: var(--accent);
+    background: rgba(200,255,0,0.03);
+  }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    header, .hero, .controls-bar, .drop-zone-wrapper, .grid-wrapper, .progress-wrap, .upload-more {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .hero-title { font-size: 56px; }
+    .header-stats { display: none; }
+    .dl-bar { padding: 16px 20px; }
+
+    .image-grid {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-text">SquishIt</div>
+    <div class="logo-dot"></div>
+    <div class="logo-badge">Free</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat-item">
+      <div class="stat-value" id="totalCompressed">0</div>
+      <div class="stat-label">Compressed</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="totalSavedMB">0 MB</div>
+      <div class="stat-label">Space Saved</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="avgReduction">0%</div>
+      <div class="stat-label">Avg Reduction</div>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-title">
+    Compress<br>
+    <span>500 Images</span><br>
+    <span class="outline">In Seconds</span>
+  </div>
+  <p class="hero-sub">Drop your WebP, JPEG & PNG images — we compress them directly in your browser. No uploads, no servers, 100% private.</p>
+</section>
+
+<!-- CONTROLS -->
+<div class="controls-bar">
+  <div class="quality-group">
+    <span class="quality-label">Quality</span>
+    <input type="range" class="quality-slider" id="qualitySlider" min="1" max="99" value="60">
+    <span class="quality-value" id="qualityDisplay">60%</span>
+  </div>
+  <div class="format-group">
+    <button class="format-btn active" data-fmt="original">Original</button>
+    <button class="format-btn" data-fmt="image/webp">WebP</button>
+    <button class="format-btn" data-fmt="image/jpeg">JPEG</button>
+    <button class="format-btn" data-fmt="image/png">PNG</button>
+  </div>
+  <div class="actions">
+    <button class="btn btn-primary" id="compressAllBtn" disabled>
+      <span>⚡</span> Compress All
+    </button>
+    <button class="btn btn-danger" id="clearAllBtn" disabled>
+      <span>✕</span> Clear
+    </button>
+  </div>
+</div>
+
+<!-- DROP ZONE -->
+<div class="drop-zone-wrapper">
+  <div class="drop-zone" id="dropZone">
+    <div class="drop-icon">🗜️</div>
+    <div class="drop-title">Drop Images Here</div>
+    <p class="drop-sub">Drag & drop up to <strong>500 images</strong> at once<br>or click to browse your files</p>
+    <div class="drop-formats">
+      <span class="format-tag webp">WebP</span>
+      <span class="format-tag jpeg">JPEG</span>
+      <span class="format-tag png">PNG</span>
+    </div>
+    <button class="btn-browse" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+    <input type="file" id="fileInput" multiple accept="image/webp,image/jpeg,image/jpg,image/png">
+  </div>
+</div>
+
+<!-- UPLOAD MORE -->
+<div class="upload-more" id="uploadMore">
+  <button class="upload-more-btn" onclick="document.getElementById('fileInput').click()">
+    + Add More Images (up to 500 total)
+  </button>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-wrap" id="progressWrap">
+  <div class="progress-header">
+    <span id="progressLabel">Compressing images…</span>
+    <span id="progressCount">0 / 0</span>
+  </div>
+  <div class="progress-bar-outer">
+    <div class="progress-bar-inner" id="progressBar"></div>
+  </div>
+</div>
+
+<!-- IMAGE GRID -->
+<div class="grid-wrapper" id="gridWrapper">
+  <div class="grid-header">
+    <div class="grid-title">
+      Your Images
+      <span class="count-badge" id="countBadge">0</span>
+    </div>
+    <div class="summary-strip" id="summaryStrip" style="display:none">
+      <div class="summary-item">Total: <strong id="totalOrigSize">—</strong></div>
+      <div class="summary-item">After: <strong id="totalCompSize">—</strong></div>
+      <div class="summary-item">Saved: <strong class="saved" id="totalSaved">—</strong></div>
+    </div>
+  </div>
+  <div class="image-grid" id="imageGrid"></div>
+</div>
+
+<!-- DOWNLOAD BAR -->
+<div class="dl-bar" id="dlBar">
+  <div class="dl-bar-info">
+    <div class="dl-bar-title">All Done!</div>
+    <div class="dl-bar-sub">
+      <span id="dlCount">0</span> images compressed · saved <span id="dlSaved">0 MB</span>
+    </div>
+  </div>
+  <div class="dl-bar-actions">
+    <div class="saving-badge" id="savingBadge" style="display:none">
+      Saving...
+    </div>
+    <button class="btn btn-secondary" id="compressAgainBtn" onclick="compressAllImages()">
+      ⚡ Re-compress
+    </button>
+    <button class="btn btn-primary" id="downloadAllBtn" onclick="downloadAll()">
+      ⬇ Download All (<span id="dlCountBtn">0</span>)
+    </button>
+  </div>
+</div>
+
+<script>
+const state = {
+  images: [], // { id, file, originalUrl, compressedBlob, originalSize, compressedSize, status, outputFormat }
+  quality: 60,
+  outputFormat: 'original',
+  nextId: 0
+};
+
+const MAX_IMAGES = 500;
+
+// DOM refs
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const imageGrid = document.getElementById('imageGrid');
+const gridWrapper = document.getElementById('gridWrapper');
+const countBadge = document.getElementById('countBadge');
+const compressAllBtn = document.getElementById('compressAllBtn');
+const clearAllBtn = document.getElementById('clearAllBtn');
+const qualitySlider = document.getElementById('qualitySlider');
+const qualityDisplay = document.getElementById('qualityDisplay');
+const progressWrap = document.getElementById('progressWrap');
+const progressBar = document.getElementById('progressBar');
+const progressLabel = document.getElementById('progressLabel');
+const progressCount = document.getElementById('progressCount');
+const dlBar = document.getElementById('dlBar');
+const uploadMore = document.getElementById('uploadMore');
+
+// Quality slider
+qualitySlider.addEventListener('input', () => {
+  state.quality = parseInt(qualitySlider.value);
+  qualityDisplay.textContent = state.quality + '%';
+});
+
+// Format buttons
+document.querySelectorAll('.format-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.outputFormat = btn.dataset.fmt;
+  });
+});
+
+// Drag & Drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+// Also allow drop on the page
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.target === dropZone || dropZone.contains(e.target)) return;
+  handleFiles(e.dataTransfer.files);
+});
+
+function handleFiles(files) {
+  const arr = Array.from(files).filter(f => f.type.match(/image\/(webp|jpeg|jpg|png)/));
+  const remaining = MAX_IMAGES - state.images.length;
+  const toAdd = arr.slice(0, remaining);
+
+  if (toAdd.length === 0) return;
+
+  toAdd.forEach(file => {
+    const id = state.nextId++;
+    const url = URL.createObjectURL(file);
+    state.images.push({ id, file, originalUrl: url, compressedBlob: null, originalSize: file.size, compressedSize: null, status: 'pending' });
+    addCard(state.images[state.images.length - 1]);
+  });
+
+  updateUI();
+  fileInput.value = '';
+}
+
+function addCard(img) {
+  const card = document.createElement('div');
+  card.className = 'img-card';
+  card.id = `card-${img.id}`;
+  card.style.animationDelay = (state.images.length % 12 * 30) + 'ms';
+  card.innerHTML = `
+    <div class="img-thumb-wrap">
+      <img class="img-thumb" src="${img.originalUrl}" alt="${img.file.name}">
+      <div class="img-status-overlay">
+        <div class="spinner"></div>
+      </div>
+      <div class="compression-pill" id="pill-${img.id}">—</div>
+    </div>
+    <div class="img-info">
+      <div class="img-name" title="${img.file.name}">${img.file.name}</div>
+      <div class="size-row">
+        <span class="size-original">${formatBytes(img.originalSize)}</span>
+        <span class="size-arrow">→</span>
+        <span class="size-wait" id="sizeComp-${img.id}">pending</span>
+      </div>
+    </div>
+    <div class="img-actions">
+      <button class="btn-dl" id="dl-${img.id}" onclick="downloadSingle(${img.id})">⬇ Download</button>
+      <button class="btn-remove" onclick="removeImage(${img.id})">✕</button>
+    </div>
+  `;
+  imageGrid.appendChild(card);
+}
+
+function updateCard(img) {
+  const card = document.getElementById(`card-${img.id}`);
+  if (!card) return;
+  card.className = `img-card ${img.status}`;
+
+  const sizeEl = document.getElementById(`sizeComp-${img.id}`);
+  const pill = document.getElementById(`pill-${img.id}`);
+
+  if (img.status === 'done' && img.compressedSize) {
+    const reduction = Math.round((1 - img.compressedSize / img.originalSize) * 100);
+    sizeEl.className = 'size-compressed';
+    sizeEl.textContent = formatBytes(img.compressedSize);
+    if (reduction <= 0) {
+      sizeEl.style.color = 'var(--muted)';
+      pill.textContent = '~0%';
+      pill.style.borderColor = 'rgba(150,150,150,0.4)';
+      pill.style.color = 'var(--muted)';
+    } else {
+      pill.textContent = `-${reduction}%`;
+    }
+  } else if (img.status === 'error') {
+    sizeEl.className = 'size-wait';
+    sizeEl.style.color = 'var(--danger)';
+    sizeEl.textContent = 'error';
+  } else if (img.status === 'processing') {
+    sizeEl.textContent = 'compressing…';
+  }
+}
+
+function removeImage(id) {
+  const idx = state.images.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  const img = state.images[idx];
+  URL.revokeObjectURL(img.originalUrl);
+  state.images.splice(idx, 1);
+  document.getElementById(`card-${id}`)?.remove();
+  updateUI();
+}
+
+function clearAll() {
+  state.images.forEach(i => URL.revokeObjectURL(i.originalUrl));
+  state.images = [];
+  imageGrid.innerHTML = '';
+  updateUI();
+}
+
+document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+
+function updateUI() {
+  const count = state.images.length;
+  countBadge.textContent = count;
+  compressAllBtn.disabled = count === 0;
+  clearAllBtn.disabled = count === 0;
+
+  if (count > 0) {
+    dropZone.classList.add('has-files');
+    gridWrapper.classList.add('visible');
+    uploadMore.classList.add('visible');
+  } else {
+    dropZone.classList.remove('has-files');
+    gridWrapper.classList.remove('visible');
+    uploadMore.classList.remove('visible');
+    dlBar.classList.remove('visible');
+    progressWrap.classList.remove('visible');
+  }
+
+  updateSummary();
+}
+
+function updateSummary() {
+  const done = state.images.filter(i => i.status === 'done');
+  if (done.length === 0) {
+    document.getElementById('summaryStrip').style.display = 'none';
+    return;
+  }
+
+  const origTotal = done.reduce((a, i) => a + i.originalSize, 0);
+  const compTotal = done.reduce((a, i) => a + i.compressedSize, 0);
+  const saved = origTotal - compTotal;
+  const pct = Math.round((saved / origTotal) * 100);
+
+  document.getElementById('summaryStrip').style.display = 'flex';
+  document.getElementById('totalOrigSize').textContent = formatBytes(origTotal);
+  document.getElementById('totalCompSize').textContent = formatBytes(compTotal);
+  document.getElementById('totalSaved').textContent = `${formatBytes(saved)} (${pct}%)`;
+
+  // Header stats
+  document.getElementById('totalCompressed').textContent = done.length;
+  document.getElementById('totalSavedMB').textContent = formatBytes(saved);
+  document.getElementById('avgReduction').textContent = pct + '%';
+
+  // DL bar
+  document.getElementById('dlCount').textContent = done.length;
+  document.getElementById('dlCountBtn').textContent = done.length;
+  document.getElementById('dlSaved').textContent = formatBytes(saved);
+}
+
+// === COMPRESS ===
+async function compressAllImages() {
+  const pending = state.images.filter(i => i.status === 'pending' || i.status === 'error');
+  if (pending.length === 0) {
+    // Re-compress all
+    state.images.forEach(i => {
+      i.status = 'pending';
+      i.compressedBlob = null;
+      i.compressedSize = null;
+      updateCard(i);
+    });
+    await compressAllImages();
+    return;
+  }
+
+  progressWrap.classList.add('visible');
+  compressAllBtn.disabled = true;
+
+  let done = 0;
+  const total = pending.length;
+
+  const toCompress = state.images.filter(i => i.status === 'pending' || i.status === 'error');
+
+  // Process in batches of 5
+  const batchSize = 5;
+  for (let i = 0; i < toCompress.length; i += batchSize) {
+    const batch = toCompress.slice(i, i + batchSize);
+    await Promise.all(batch.map(async img => {
+      img.status = 'processing';
+      updateCard(img);
+      try {
+        const blob = await compressImage(img.file);
+        img.compressedBlob = blob;
+        img.compressedSize = blob.size;
+        img.status = 'done';
+      } catch (err) {
+        img.status = 'error';
+      }
+      done++;
+      progressBar.style.width = (done / total * 100) + '%';
+      progressCount.textContent = `${done} / ${total}`;
+      updateCard(img);
+      updateSummary();
+    }));
+  }
+
+  progressLabel.textContent = '✓ Compression complete!';
+  compressAllBtn.disabled = false;
+
+  // Show download bar
+  const completed = state.images.filter(i => i.status === 'done');
+  if (completed.length > 0) {
+    dlBar.style.display = 'flex';
+    setTimeout(() => dlBar.classList.add('visible'), 50);
+  }
+
+  setTimeout(() => {
+    progressWrap.classList.remove('visible');
+    progressBar.style.width = '0%';
+    progressLabel.textContent = 'Compressing images…';
+  }, 2500);
+}
+
+compressAllBtn.addEventListener('click', compressAllImages);
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      // Decide output format
+      let format = state.outputFormat;
+      const originalType = file.type || 'image/jpeg';
+      if (format === 'original') {
+        // Force lossy format so we can actually compress
+        if (originalType === 'image/png') {
+          format = 'image/png'; // PNG = lossless, handle separately
+        } else {
+          format = 'image/webp'; // webp/jpeg → webp for best compression
+        }
+      }
+
+      const targetQuality = state.quality / 100;
+
+      // Helper: get blob at a given quality
+      const getBlob = (fmt, q) => new Promise((res, rej) => {
+        if (fmt === 'image/png') {
+          canvas.toBlob(b => b ? res(b) : rej(), 'image/png');
+        } else {
+          canvas.toBlob(b => b ? res(b) : rej(), fmt, q);
+        }
+      });
+
+      // Smart compression: try requested quality, then auto-reduce until smaller than original
+      const tryCompress = async () => {
+        const originalSize = file.size;
+
+        // For PNG lossless: just return original (can't losslessly compress further in browser)
+        if (format === 'image/png') {
+          const blob = await getBlob('image/png', 1);
+          // If re-encoded PNG is bigger, return original file as blob
+          if (blob.size >= originalSize) {
+            return new Blob([await file.arrayBuffer()], { type: file.type });
+          }
+          return blob;
+        }
+
+        // For lossy formats: try user quality first, then lower until file is smaller
+        let q = targetQuality;
+        let blob = await getBlob(format, q);
+
+        // If already smaller, great
+        if (blob.size < originalSize) return blob;
+
+        // Auto-reduce quality in steps until smaller
+        const steps = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05];
+        for (const step of steps) {
+          if (step >= q) continue; // don't go above user's quality
+          blob = await getBlob(format, step);
+          if (blob.size < originalSize) return blob;
+        }
+
+        // If we STILL can't get smaller (very aggressive already-compressed image),
+        // try JPEG as last resort at very low quality
+        const jpegBlob = await getBlob('image/jpeg', 0.05);
+        if (jpegBlob.size < originalSize) return jpegBlob;
+
+        // Last resort: return original unchanged
+        return new Blob([await file.arrayBuffer()], { type: file.type });
+      };
+
+      tryCompress().then(resolve).catch(reject);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function getExt(img) {
+  const fmt = state.outputFormat === 'original' ? img.file.type : state.outputFormat;
+  const map = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png' };
+  return map[fmt] || 'webp';
+}
+
+function downloadSingle(id) {
+  const img = state.images.find(i => i.id === id);
+  if (!img || !img.compressedBlob) return;
+  const url = URL.createObjectURL(img.compressedBlob);
+  const a = document.createElement('a');
+  const baseName = img.file.name.replace(/\.[^.]+$/, '');
+  a.href = url;
+  a.download = `${baseName}.${getExt(img)}`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadAll() {
+  const done = state.images.filter(i => i.status === 'done' && i.compressedBlob);
+  if (done.length === 0) return;
+
+  const savingBadge = document.getElementById('savingBadge');
+  const dlBtn = document.getElementById('downloadAllBtn');
+  savingBadge.style.display = 'inline-flex';
+  dlBtn.disabled = true;
+
+  if (done.length === 1) {
+    downloadSingle(done[0].id);
+    savingBadge.style.display = 'none';
+    dlBtn.disabled = false;
+    return;
+  }
+
+  // Use JSZip via CDN
+  try {
+    await loadJSZip();
+    const zip = new JSZip();
+    done.forEach(img => {
+      const baseName = img.file.name.replace(/\.[^.]+$/, '');
+      zip.file(`${baseName}.${getExt(img)}`, img.compressedBlob);
+    });
+    const content = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'compressed_images.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    // Fallback: download one by one
+    for (const img of done) {
+      downloadSingle(img.id);
+      await new Promise(r => setTimeout(r, 150));
+    }
+  }
+
+  savingBadge.style.display = 'none';
+  dlBtn.disabled = false;
+}
+
+function loadJSZip() {
+  return new Promise((resolve, reject) => {
+    if (window.JSZip) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+}
+</script>
+</body>
+</html>
