@@ -91,17 +91,6 @@ If you want to publish this tool on your own GitHub Pages or Netlify account, fo
 
 Drag and drop `index.html` onto the Netlify dashboard at netlify.com. The site goes live immediately with an auto-generated URL.
 
-**GitHub Pages:**
-
-1. Upload `index.html` to a public GitHub repository
-2. Navigate to Settings > Pages
-3. Set the source branch to `main` and the folder to root
-4. The application will be available at `https://username.github.io/repository-name/`
-
-**Netlify:**
-
-Drag and drop the `index.html` file onto the Netlify dashboard. The application will be live immediately at an auto-generated URL.
-
 ---
 
 ## Privacy
