@@ -69,7 +69,7 @@ The compressor uses a progressive quality reduction strategy. If the specified q
 To use the tool right now, paste this link into your browser:
 
 ```
-https://image-compressor-psi-six.vercel.app/
+https://image-converter-tau-taupe.vercel.app/
 ```
 
 To run it on your local machine, download the `index.html` file and open it directly in any browser. No server or internet connection required after that point.
